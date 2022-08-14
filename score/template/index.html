@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://unpkg.com/mdui@1.0.2/dist/css/mdui.min.css" />
+    <script src="https://unpkg.com/mdui@1.0.2/dist/js/mdui.min.js"></script>
+</head>
+<body >
+<div  class="mdui-container-fluid">
+<div class="mdui-table-fluid"  >
+    <table class="mdui-table">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>课程</th>
+            <th>成绩</th>
+            <th>平时</th>
+            <th>卷面</th>
+            <th>性质</th>
+            <th>学分</th>
+            <th>绩点</th>
+
+        </tr>
+        </thead>
+        {% for i in score_list %}
+        {% set sc =  i[1]|int %}
+        {% if sc<=60 %}
+        <tr style="background-color: #ff000030" >
+        {% else %}
+        <tr>
+
+            {% endif %}
+        <td>{{ score_list.index(i)+1 }}</td>
+            {% for j in i %}
+            <td>{{ j }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+      </table>
+</div>
+</div>
+</body>
+</html>
