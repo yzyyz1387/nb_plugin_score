@@ -9,7 +9,7 @@ import re
 from os.path import dirname
 
 from jinja2 import Environment, FileSystemLoader
-from nonebot import on_command
+from nonebot import on_command, logger
 from nonebot.adapters import Message
 from nonebot.adapters.onebot.v11 import ActionFailed
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent, MessageSegment
@@ -26,7 +26,7 @@ global_config = driver.config
 
 @driver.on_bot_connect
 async def _():
-    await utils.init()
+    await utils.plugin_init()
 
 score_checker = on_command("查成绩", aliases={"我的成绩", "成绩查询"}, priority=2, block=True)
 
@@ -48,10 +48,11 @@ async def score_checker_(bot: Bot, event: MessageEvent, state: T_State, args: Me
                     await score_checker.send(cue + f"正在查询自定义学期{str(args)}的成绩")
                     result = await data_processor(accounts[qq]["account"], accounts[qq]["password"], str(args))
                 else:
-                    await score_checker.finish(cue + f"自定义学期格式误，正为你查询本学期数据")
+                    await score_checker.send(cue + f"自定义学期格式误，正为你查询本学期数据")
                     result = await data_processor(accounts[qq]["account"], accounts[qq]["password"])
             else:
                 result = await data_processor(accounts[qq]["account"], accounts[qq]["password"])
+            logger.info(result)
             if result[0]:
                 total = result[1]
                 score_list = result[0]

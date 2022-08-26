@@ -8,13 +8,12 @@ import asyncio
 from .path import *
 from .utils import *
 from functools import wraps
-# from nonebot import logger
+from nonebot import logger
 from prettytable import PrettyTable
 from .login_check.login_check import login_check
 from typing import Optional, Dict, List, Tuple, Any, Union
 from playwright._impl._api_types import TimeoutError
 
-logger = log()
 
 
 def time_log(func):
