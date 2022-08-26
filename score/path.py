@@ -7,9 +7,9 @@
 # @Software: PyCharm
 from pathlib import Path
 
-local = Path() / "教务工具"
-score_path = local / "score"
-config = Path() / 'config.yml'
-account = local / 'account.yml'
-output_path = local / 'output'
-img_output_path = local / 'img_output'
+LOCAL = Path() / "教务工具"
+SCORE_PATH = LOCAL / "score"
+CONFIG_PATH = Path() / 'config.yml'
+ACCOUNT_PATH = LOCAL / 'account.yml'
+OUTPUT_PATH = LOCAL / 'output'
+IMG_OUTPUT_PATH = LOCAL / 'img_output'

@@ -8,11 +8,13 @@ import asyncio
 from .path import *
 from .utils import *
 from functools import wraps
-from nonebot import logger
+# from nonebot import logger
 from prettytable import PrettyTable
 from .login_check.login_check import login_check
 from typing import Optional, Dict, List, Tuple, Any, Union
 from playwright._impl._api_types import TimeoutError
+
+logger = log()
 
 
 def time_log(func):
@@ -38,7 +40,7 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
     :return: 当前学期查询结果
     """
     logger.info("开始运行，将在1min内完成...")
-    status = await login_check(account, password)
+    # status = await login_check(account, password)
     # if status == -1:  # FIXME 如果此系统登录出现异常，也会返回-1 （2022年8月26日发现出现了此问题）
     #     logger.warning("账号或密码错误，请检查后重试")
     #     pass
@@ -80,9 +82,9 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
         cookies = list(await context.cookies())
         _WEU = ""
         MOD_AUTH_CAS = ""
-        students_score = score_path / f'{account}.json'
-        students_score_total = score_path / f'{account}_total.json'
-        at_present = local / 'present.json'
+        students_score = SCORE_PATH / f'{account}.json'
+        students_score_total = SCORE_PATH / f'{account}_total.json'
+        at_present = LOCAL / 'present.json'
         headers = {
             'Accept': 'application/json, text/javascript, */*; q=0.01',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -110,11 +112,11 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
                 logger.debug(f"正将成绩储存到 {students_score} ")
                 score = (await client.post('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/xscjcx.do',
                                            headers=headers, data=data)).read().decode('utf-8')
-                Path.mkdir(local) if not Path.exists(local) else ...
-                Path.mkdir(score_path) if not Path.exists(score_path) else ...
-                # logger.info(f"正在储存{account}的成绩到") if Path.exists(score_path) else Path.mkdir(score_path)
+                Path.mkdir(LOCAL) if not Path.exists(LOCAL) else ...
+                Path.mkdir(SCORE_PATH) if not Path.exists(SCORE_PATH) else ...
+                # logger.info(f"正在储存{account}的成绩到") if Path.exists(SCORE_PATH) else Path.mkdir(SCORE_PATH)
                 await async_w(students_score, score)
-                logger.info(f"{account} 的成绩储存完成")
+                logger.success(f"{account} 的成绩储存完成")
                 logger.info("正在查询当前学期")
                 semester = json.loads(
                     (await client.post('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/cxdqxnxq.do',
@@ -132,7 +134,7 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
         await page1.wait_for_url("https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/cxxscjpm.do")
         selector = await page1.query_selector('//html/body/pre')
         total_score = (await selector.inner_text())
-        logger.info(f"获取完成，正在储存{account}的总体成绩")
+        logger.success(f"获取完成，正在储存{account}的总体成绩")
         logger.debug(f"获取到的总体成绩：{total_score}")
         await async_w(students_score_total, total_score)
         logger.info(f"{account} 的总体成绩储存完成")
@@ -144,16 +146,16 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
 async def data_processor(account: str, password: str, dm: str = None) -> Optional[List[Any]]:
     try:
         if dm:
-            data = await run(account, password, dm)
+            student_data = await run(account, password, dm)
         else:
-            data = await run(account, password)
+            student_data = await run(account, password)
     except TimeoutError:
         return [None, 0]
-    if not data:
+    if not student_data:
         logger.warning("登陆失败")
         return [None, 1]
     else:
-        name, semester_DM, total_score, score = data[0], data[1], data[2], data[3]
+        name, semester_DM, total_score, score = student_data[0], student_data[1], student_data[2], student_data[3]
         row = score["datas"]["xscjcx"]["rows"]
         row_total = total_score["datas"]["cxxscjpm"]["rows"][0]
         last_semester_DM = row[0]["XNXQDM"]
@@ -172,35 +174,35 @@ async def data_processor(account: str, password: str, dm: str = None) -> Optiona
             semester_DM = dm
         for details in row:
             if details["XNXQDM"] == semester_DM:
-                detail = [details["XSKCM"],  # 课程名
-                          details["ZCJ"],  # 成绩
-                          details["PSCJ"],  # 平时成绩
-                          details["QMCJ"],  # 期末成绩
-                          details["KCXZDM_DISPLAY"],  # 课程性质
-                          details["XF"],  # 学分
-                          details["XFJD"]]  # 学分绩点
-                for i in range(len(detail)):
-                    detail[i] = str(detail[i])
+                detail: list = [details["XSKCM"],  # 课程名
+                                details["ZCJ"],  # 成绩
+                                details["PSCJ"],  # 平时成绩
+                                details["QMCJ"],  # 期末成绩
+                                details["KCXZDM_DISPLAY"],  # 课程性质
+                                details["XF"],  # 学分
+                                details["XFJD"]]  # 学分绩点
+                for i_ in range(len(detail)):
+                    detail[i_] = str(detail[i_])
 
                 output_score.append(detail)
                 # logger.info(f"{}")
         juan_score.pop(3)
         tb = PrettyTable()
         tb2 = PrettyTable()
-        logger.info(name)
+        logger.success(name)
         tb.field_names = ["专业排名", "GPA", "学分成绩", "班级排名"]
         tb.add_row(juan_score)
         tb2.field_names = ["课程", "成绩", "平时成绩", "期末成绩", "课程性质", "学分", "学分绩点"]
         tb2.add_rows(output_score)
-        logger.info('\n' + str(tb))
+        logger.success('\n' + str(tb))
         # print("")
-        logger.info('\n' + str(tb2))
+        logger.success('\n' + str(tb2))
         return [output_score, juan_score]
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    with open(config, "r", encoding="utf-8") as f:
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
         for i in data:
             loop.run_until_complete(data_processor(str(i), data[i]))
