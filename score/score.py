@@ -156,47 +156,50 @@ async def data_processor(account: str, password: str, dm: str = None) -> Optiona
     else:
         name, semester_DM, total_score, score = student_data[0], student_data[1], student_data[2], student_data[3]
         row = score["datas"]["xscjcx"]["rows"]
-        row_total = total_score["datas"]["cxxscjpm"]["rows"][0]
-        last_semester_DM = row[0]["XNXQDM"]
-        output_score = []
-        juan_score = []  # 卷
-        for juan in row_total:
-            juan_score.append(str(row_total[juan]))
-        if not dm:
-            if last_semester_DM != semester_DM:
-                logger.info("查询的学期还没有成绩，将查询最上学期的成绩")
-                semester_DM = last_semester_DM
-            elif last_semester_DM == semester_DM:
-                logger.info(f"查询{semester_DM}学期的成绩")
-                pass
-        else:
-            semester_DM = dm
-        for details in row:
-            if details["XNXQDM"] == semester_DM:
-                detail: list = [details["XSKCM"],  # 课程名
-                                details["ZCJ"],  # 成绩
-                                details["PSCJ"],  # 平时成绩
-                                details["QMCJ"],  # 期末成绩
-                                details["KCXZDM_DISPLAY"],  # 课程性质
-                                details["XF"],  # 学分
-                                details["XFJD"]]  # 学分绩点
-                for i_ in range(len(detail)):
-                    detail[i_] = str(detail[i_])
+        if row:
+            row_total = total_score["datas"]["cxxscjpm"]["rows"][0]
+            last_semester_DM = row[0]["XNXQDM"]
+            output_score = []
+            juan_score = []  # 卷
+            for juan in row_total:
+                juan_score.append(str(row_total[juan]))
+            if not dm:
+                if last_semester_DM != semester_DM:
+                    logger.info("查询的学期还没有成绩，将查询最上学期的成绩")
+                    semester_DM = last_semester_DM
+                elif last_semester_DM == semester_DM:
+                    logger.info(f"查询{semester_DM}学期的成绩")
+                    pass
+            else:
+                semester_DM = dm
+            for details in row:
+                if details["XNXQDM"] == semester_DM:
+                    detail: list = [details["XSKCM"],  # 课程名
+                                    details["ZCJ"],  # 成绩
+                                    details["PSCJ"],  # 平时成绩
+                                    details["QMCJ"],  # 期末成绩
+                                    details["KCXZDM_DISPLAY"],  # 课程性质
+                                    details["XF"],  # 学分
+                                    details["XFJD"]]  # 学分绩点
+                    for i_ in range(len(detail)):
+                        detail[i_] = str(detail[i_])
 
-                output_score.append(detail)
-                # logger.info(f"{}")
-        juan_score.pop(3)
-        tb = PrettyTable()
-        tb2 = PrettyTable()
-        logger.success(name)
-        tb.field_names = ["专业排名", "GPA", "学分成绩", "班级排名"]
-        tb.add_row(juan_score)
-        tb2.field_names = ["课程", "成绩", "平时成绩", "期末成绩", "课程性质", "学分", "学分绩点"]
-        tb2.add_rows(output_score)
-        logger.success('\n' + str(tb))
-        # print("")
-        logger.success('\n' + str(tb2))
-        return [output_score, juan_score]
+                    output_score.append(detail)
+                    # logger.info(f"{}")
+            juan_score.pop(3)
+            tb = PrettyTable()
+            tb2 = PrettyTable()
+            logger.success(name)
+            tb.field_names = ["专业排名", "GPA", "学分成绩", "班级排名"]
+            tb.add_row(juan_score)
+            tb2.field_names = ["课程", "成绩", "平时成绩", "期末成绩", "课程性质", "学分", "学分绩点"]
+            tb2.add_rows(output_score)
+            logger.success('\n' + str(tb))
+            # print("")
+            logger.success('\n' + str(tb2))
+            return [output_score, juan_score]
+        else:
+            return []
 
 
 if __name__ == '__main__':

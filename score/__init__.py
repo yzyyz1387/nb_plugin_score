@@ -53,36 +53,40 @@ async def score_checker_(bot: Bot, event: MessageEvent, state: T_State, args: Me
             else:
                 result = await data_processor(accounts[qq]["account"], accounts[qq]["password"])
             logger.info(result)
-            if result[0]:
-                total = result[1]
-                score_list = result[0]
-                env = Environment(loader=FileSystemLoader(str(dirname(__file__))))
-                template = env.get_template('/template/index.html')
-                html = template.render(score_list=score_list)
-                with open(OUTPUT_PATH / f"index_{qq}.html", 'w', encoding='utf-8') as f:
-                    f.write(html)
-                    f.close()
-                browser = await init()
-                context = await browser.new_context(locale="zh-CN")
-                page = await context.new_page()
-                temp_out = OUTPUT_PATH / f"index_{qq}.html"
-                await page.goto(f"file:///{Path(temp_out).resolve()}")
-                await page.locator('.mdui-table').screenshot(path=IMG_OUTPUT_PATH / f"index_{qq}.png")
-                msg_text = f"GPA：{total[1]}\n学分成绩：{total[2]}\n班级排名:{total[3]}\n专业排名：{total[0]}\n"
-                await score_checker.send(cue + f"\n获取成功，正在尝试将成绩通过私聊发送给你")
-                try:
-                    await bot.call_api("send_private_msg", user_id=qq, message=msg_text + MessageSegment.image(
-                        f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
-                except ActionFailed:
-                    await score_checker.finish(f"To  {qq}:\n请先添加机器人为好友捏")
-                # await score_checker.finish(msg_text + MessageSegment.image(f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
-            elif result[1] == 1:
-                await score_checker.finish(
-                    f"To  {qq}:\n你的账号或密码错误，请重新绑定\n命令：换绑2019010000 123456\n账号密码用空格隔开")
-            elif result[1] == 0:
-                await score_checker.finish(cue + f"\n超时了诶~~~网络貌似不给力...")
-            elif not result[0]:
-                await score_checker.finish(cue + f"\n没有查询到{args}的成绩哦，可能是官网出了点问题，请自行查看...")
+            if result:
+                if result[0]:
+                    total = result[1]
+                    score_list = result[0]
+                    env = Environment(loader=FileSystemLoader(str(dirname(__file__))))
+                    template = env.get_template('/template/index.html')
+                    html = template.render(score_list=score_list)
+                    with open(OUTPUT_PATH / f"index_{qq}.html", 'w', encoding='utf-8') as f:
+                        f.write(html)
+                        f.close()
+                    browser = await init()
+                    context = await browser.new_context(locale="zh-CN")
+                    page = await context.new_page()
+                    temp_out = OUTPUT_PATH / f"index_{qq}.html"
+                    await page.goto(f"file:///{Path(temp_out).resolve()}")
+                    await page.locator('.mdui-table').screenshot(path=IMG_OUTPUT_PATH / f"index_{qq}.png")
+                    msg_text = f"GPA：{total[1]}\n学分成绩：{total[2]}\n班级排名:{total[3]}\n专业排名：{total[0]}\n"
+                    await score_checker.send(cue + f"\n获取成功，正在尝试将成绩通过私聊发送给你")
+                    try:
+                        await bot.call_api("send_private_msg", user_id=qq, message=msg_text + MessageSegment.image(
+                            f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
+                    except ActionFailed:
+                        await score_checker.finish(f"To  {qq}:\n请先添加机器人为好友捏")
+                    # await score_checker.finish(msg_text + MessageSegment.image(f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
+                elif result[1] == 1:
+                    await score_checker.finish(
+                        f"To  {qq}:\n你的账号或密码错误，请重新绑定\n命令：换绑2019010000 123456\n账号密码用空格隔开")
+                elif result[1] == 0:
+                    await score_checker.finish(cue + f"\n超时了诶~~~网络貌似不给力...")
+                elif not result[0]:
+                    await score_checker.finish(cue + f"\n没有查询到{args}的成绩哦，可能是官网出了点问题，请自行查看...")
+            else:
+                logger.error("登陆成功但查询为空，可手动打开官网查询，不出意外也查不到")
+                await score_checker.finish("登陆成功但查询为空，可手动打开官网查询，不出意外也查不到")
     except TypeError:
         yaml.dump({1796000000: {"ACCOUNT_PATH": '2019010000', "password": 123456}},
                   open(ACCOUNT_PATH, "w", encoding="utf-8"))
