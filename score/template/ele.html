@@ -13,25 +13,23 @@
         <thead>
         <tr>
             <th>#</th>
-            <th>课程</th>
-            <th>成绩</th>
-            <th>平时</th>
-            <th>卷面</th>
-            <th>性质</th>
-            <th>学分</th>
-            <th>绩点</th>
+            <th>选修课类型</th>
+            <th>要求学分</th>
+            <th>已获学分</th>
+
 
         </tr>
         </thead>
-        {% for i in data %}
-        {% set sc =  i[1]|int %}
-        {% if sc<=60 %}
-        <tr style="background-color: #ff000030" >
-        {% else %}
-        <tr>
 
-            {% endif %}
-        <td>{{ data.index(i)+1 }}</td>
+        {% for i in data %}
+<!--          {% set sc =  i[1]|int %}-->
+            {% if i[1] == i[2] %}
+              <tr style="background-color: #00c12b87" >
+            {% else %}
+              <tr>
+
+              {% endif %}
+         <td>{{ data.index(i)+1 }}</td>
             {% for j in i %}
             <td>{{ j }}</td>
             {% endfor %}

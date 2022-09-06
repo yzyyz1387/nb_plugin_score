@@ -5,6 +5,8 @@ import nonebot
 import yaml
 import httpx
 import asyncio
+
+from .utils_net import get_main_cookies
 from .path import *
 from .utils import *
 from functools import wraps
@@ -13,20 +15,6 @@ from prettytable import PrettyTable
 from .login_check.login_check import login_check
 from typing import Optional, Dict, List, Tuple, Any, Union
 from playwright._impl._api_types import TimeoutError
-
-
-
-def time_log(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        import time
-        start_time = time.time()
-        data = await func(*args, **kwargs)
-        end_time = time.time()
-        logger.info(f"运行时间：{end_time - start_time}")
-        return data
-
-    return wrapper
 
 
 @time_log
@@ -39,48 +27,17 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
     :return: 当前学期查询结果
     """
     logger.info("开始运行，将在1min内完成...")
-    # status = await login_check(account, password)
-    # if status == -1:  # FIXME 如果此系统登录出现异常，也会返回-1 （2022年8月26日发现出现了此问题）
-    #     logger.warning("账号或密码错误，请检查后重试")
-    #     pass
-    #     return None
-    # else:
-    browser = await init()
-    context = await browser.new_context(locale="zh-CN")
 
-    page = await context.new_page()
-    await page.goto(
-        "https://authserver.nwafu.edu.cn/authserver/login?service=https%3A%2F%2Fnewehall.nwafu.edu.cn%3A443"
-        "%2Flogin%3Fservice%3Dhttps%3A%2F%2Fnewehall.nwafu.edu.cn%2Fywtb-portal%2FLite%2Findex.html%3Fbrowser"
-        "%3Dno%23%2Fwork_bench%2FLite_workbench")
-    await page.locator("[placeholder=\"请输入学号\\/工号\"]").click()
-    await page.locator("[placeholder=\"请输入学号\\/工号\"]").fill(account)
-    await page.locator("[placeholder=\"请输入密码\"]").click()
-    await page.locator("[placeholder=\"请输入密码\"]").fill(password)
-    await page.locator("#login_submit").click()
-    await page.wait_for_timeout(100)
-    if "冻结" in await page.content():
-        logger.warning("账号被冻结")
-        return None
-    else:
-        await page.wait_for_url(
-            "https://newehall.nwafu.edu.cn/ywtb-portal/Lite/index.html?browser=no#/work_bench/Lite_workbench")
-        name_selector = (await page.query_selector(
-            "//html/body/div[2]/div/div/div/div[2]/header/div/div/div/div[1]/div[3]/div/span/div/span"))
-        name = (await name_selector.inner_text())
-        logger.info(f"欢迎您，{name}")
-        await page.goto(
-            "https://newehall.nwafu.edu.cn/ywtb-portal/Lite/index.html?browser=no#/work_bench/Lite_workbench")
-        await page.locator("text=本科教务系统").click()
-        await page.locator("text=成绩中心").click()
-        async with page.expect_popup(timeout=600000) as popup_info:
-            await page.locator("text=成绩查询").nth(1).click()
-        page1 = await popup_info.value
-        await page1.goto('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/*default/index.do')
-        await page1.locator("li[role=\"tab\"]:has-text(\"全部\")").click()
-        cookies = list(await context.cookies())
-        _WEU = ""
-        MOD_AUTH_CAS = ""
+    main_list = await get_main_cookies(account, password)
+    if main_list:
+        name = main_list[0]
+        page = main_list[2]
+        page1 = main_list[3]
+        context = main_list[4]
+        browser = main_list[5]
+        main_cookies = main_list[1]
+        _WEU = main_cookies["_WEU"]
+        MOD_AUTH_CAS = main_cookies["MOD_AUTH_CAS"]
         students_score = SCORE_PATH / f'{account}.json'
         students_score_total = SCORE_PATH / f'{account}_total.json'
         at_present = LOCAL / 'present.json'
@@ -98,12 +55,6 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
             'pageSize': 100,
             'pageNumber': 1
         }
-
-        for i in cookies:
-            if i['name'] == '_WEU':
-                _WEU = i['value']
-            if i['name'] == 'MOD_AUTH_CAS':
-                MOD_AUTH_CAS = i['value']
 
         if _WEU and MOD_AUTH_CAS:
             headers['Cookie'] = '_WEU=' + _WEU + '; MOD_AUTH_CAS=' + MOD_AUTH_CAS + ';'
@@ -128,18 +79,20 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
                     semester_DM = dm
                 else:
                     semester_DM = semester["datas"]["cxdqxnxq"]["rows"][0]["DM"]
-        logger.info(f"获取{account}的总体成绩...")
-        await page1.goto('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/cxxscjpm.do')
-        await page1.wait_for_url("https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/cxxscjpm.do")
-        selector = await page1.query_selector('//html/body/pre')
-        total_score = (await selector.inner_text())
-        logger.success(f"获取完成，正在储存{account}的总体成绩")
-        logger.debug(f"获取到的总体成绩：{total_score}")
-        await async_w(students_score_total, total_score)
-        logger.info(f"{account} 的总体成绩储存完成")
-        await context.close()
-        await browser.close()
-        return [name, semester_DM, json.loads(total_score), json.loads(score)]
+            logger.info(f"获取{account}的总体成绩...")
+            await page1.goto('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/cxxscjpm.do')
+            await page1.wait_for_url("https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/modules/cjcx/cxxscjpm.do")
+            selector = await page1.query_selector('//html/body/pre')
+            total_score = (await selector.inner_text())
+            logger.success(f"获取完成，正在储存{account}的总体成绩")
+            logger.debug(f"获取到的总体成绩：{total_score}")
+            await async_w(students_score_total, total_score)
+            logger.info(f"{account} 的总体成绩储存完成")
+            await context.close()
+            await browser.close()
+            return [name, semester_DM, json.loads(total_score), json.loads(score)]
+    else:
+        return None
 
 
 async def data_processor(account: str, password: str, dm: str = None) -> Optional[List[Any]]:
