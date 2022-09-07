@@ -133,8 +133,6 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
         await bind_change.finish("请使用空格分隔你的账号和密码")
 
 
-check_help = on_command("查分帮助", priority=2, block=True)
-
 ele_checker = on_command("查选修", aliases={"查通识", "我的选修"}, priority=2, block=True)
 
 
@@ -174,11 +172,12 @@ async def who_am_i(qq: int, cue: MessageSegment, matcher: Matcher) -> Optional[l
             cue + f"\n你还没有绑定账号哦，私聊我进行绑定：\n命令：绑定账号2019010000 123456\n更换绑定：\n换绑201901000 123456\n【账号密码用空格隔开】")
         return None
 
+check_help = on_command("查分帮助", priority=2, block=True)
+
 
 @check_help.handle()
 async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = CommandArg()):
-    help_list = """
-绑定：
+    help_list = """绑定：
     绑定账号2019010000 123456
     【请私聊我以免信息泄露】
 换绑(私聊)：
@@ -194,6 +193,5 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
     查选修
     查通识
     我的选修
-    
     """
     await check_help.finish(help_list)
