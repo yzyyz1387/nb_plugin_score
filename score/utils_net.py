@@ -7,6 +7,7 @@
 # @Software: PyCharm
 import os
 from typing import Dict, Union, Optional
+from playwright._impl._api_types import TimeoutError
 
 import httpx
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
@@ -89,64 +90,78 @@ async def get_main_cookies(
         if not page:
             logger.warning("账号或密码错误")
             return None
-    else:
-        page = await playwright_login(context, account, password)
-        logger.info("正在获取关键信息")
-        await page.wait_for_url(
-            "https://newehall.nwafu.edu.cn/ywtb-portal/Lite/index.html?browser=no#/work_bench/Lite_workbench")
-        name_selector = (await page.query_selector(
-            "//html/body/div[2]/div/div/div/div[2]/header/div/div/div/div[1]/div[3]/div/span/div/span"))
-        name = (await name_selector.inner_text())
-        logger.info(f"欢迎您，{name}")
-        await page.goto(
-            "https://newehall.nwafu.edu.cn/ywtb-portal/Lite/index.html?browser=no#/work_bench/Lite_workbench")
-        await page.locator("text=本科教务系统").click()
-        await page.locator("text=成绩中心").click()
-        async with page.expect_popup(timeout=600000) as popup_info:
-            await page.locator("text=成绩查询").nth(1).click()
-        page1 = await popup_info.value
-        await page1.goto('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/*default/index.do')
-        await page1.locator("li[role=\"tab\"]:has-text(\"全部\")").click()
-        cookies = list(await context.cookies())
-        _WEU = ""
-        MOD_AUTH_CAS = ""
-        cookies_r = {}
-        for i in cookies:
-            if i['name'] == '_WEU':
-                _WEU = i['value']
-            if i['name'] == 'MOD_AUTH_CAS':
-                MOD_AUTH_CAS = i['value']
-        if _WEU and MOD_AUTH_CAS:
-            cookies_r['_WEU'] = _WEU
-            cookies_r['MOD_AUTH_CAS'] = MOD_AUTH_CAS
-            logger.info("获取关键信息成功！")
-            logger.debug(f"cookies: {cookies_r}")
-            return [name, cookies_r, page, page1, context, browser]
-        else:
-            logger.warning("获取cookies失败")
+        elif page == "TimeoutError":
+            logger.warning("登录超时，请重试")
             return None
-
-
-async def playwright_login(context: BrowserContext, account, password) -> Optional[Page]:
-    page = await context.new_page()
-    await page.goto(
-        "https://authserver.nwafu.edu.cn/authserver/login?service=https%3A%2F%2Fnewehall.nwafu.edu.cn%3A443"
-        "%2Flogin%3Fservice%3Dhttps%3A%2F%2Fnewehall.nwafu.edu.cn%2Fywtb-portal%2FLite%2Findex.html%3Fbrowser"
-        "%3Dno%23%2Fwork_bench%2FLite_workbench")
-    await page.locator("[placeholder=\"请输入学号\\/工号\"]").click()
-    await page.locator("[placeholder=\"请输入学号\\/工号\"]").fill(account)
-    await page.locator("[placeholder=\"请输入密码\"]").click()
-    await page.locator("[placeholder=\"请输入密码\"]").fill(password)
-    await page.locator("#login_submit").click()
-    await page.wait_for_timeout(100)
-    content = await page.content()
-    if "冻结" in content:
-        logger.warning("账号被冻结，请注意查看手机短信，并在解冻后手动登录一次")
-        logger.warning("账号被冻结，请注意查看手机短信，并在解冻后手动登录一次")
-        logger.warning("账号被冻结，请注意查看手机短信，并在解冻后手动登录一次")
-        return None
-    elif "错误" in content:
-        logger.warning("账号或密码错误，请检查后重试")
-        return None
     else:
-        return page
+        try:
+            page = await playwright_login(context, account, password)
+            logger.info("正在获取关键信息")
+            await page.wait_for_url(
+                "https://newehall.nwafu.edu.cn/ywtb-portal/Lite/index.html?browser=no#/work_bench/Lite_workbench")
+            name_selector = (await page.query_selector(
+                "//html/body/div[2]/div/div/div/div[2]/header/div/div/div/div[1]/div[3]/div/span/div/span"))
+            name = (await name_selector.inner_text())
+            logger.info(f"欢迎您，{name}")
+            await page.goto(
+                "https://newehall.nwafu.edu.cn/ywtb-portal/Lite/index.html?browser=no#/work_bench/Lite_workbench")
+            await page.locator("text=本科教务系统").click()
+            await page.locator("text=成绩中心").click()
+            async with page.expect_popup(timeout=600000) as popup_info:
+                await page.locator("text=成绩查询").nth(1).click()
+            page1 = await popup_info.value
+            await page1.goto('https://newehall.nwafu.edu.cn/jwapp/sys/cjcx/*default/index.do')
+            await page1.locator("li[role=\"tab\"]:has-text(\"全部\")").click()
+            cookies = list(await context.cookies())
+            _WEU = ""
+            MOD_AUTH_CAS = ""
+            cookies_r = {}
+            for i in cookies:
+                if i['name'] == '_WEU':
+                    _WEU = i['value']
+                if i['name'] == 'MOD_AUTH_CAS':
+                    MOD_AUTH_CAS = i['value']
+            if _WEU and MOD_AUTH_CAS:
+                cookies_r['_WEU'] = _WEU
+                cookies_r['MOD_AUTH_CAS'] = MOD_AUTH_CAS
+                logger.info("获取关键信息成功！")
+                logger.debug(f"cookies: {cookies_r}")
+                return [name, cookies_r, page, page1, context, browser]
+            else:
+                logger.warning("获取cookies失败")
+                return None
+        except TimeoutError:
+            logger.warning("操作超时，请重试")
+            raise OperationTimedOutError
+
+
+async def playwright_login(context: BrowserContext, account, password) -> Union[None, Page, str]:
+    page = await context.new_page()
+    try:
+        await page.goto(
+            "https://authserver.nwafu.edu.cn/authserver/login?service=https%3A%2F%2Fnewehall.nwafu.edu.cn%3A443"
+            "%2Flogin%3Fservice%3Dhttps%3A%2F%2Fnewehall.nwafu.edu.cn%2Fywtb-portal%2FLite%2Findex.html%3Fbrowser"
+            "%3Dno%23%2Fwork_bench%2FLite_workbench")
+        await page.locator("[placeholder=\"请输入学号\\/工号\"]").click()
+        await page.locator("[placeholder=\"请输入学号\\/工号\"]").fill(account)
+        await page.locator("[placeholder=\"请输入密码\"]").click()
+        await page.locator("[placeholder=\"请输入密码\"]").fill(password)
+        await page.locator("#login_submit").click()
+        await page.wait_for_timeout(100)
+        content = await page.content()
+        if "冻结" in content:
+            logger.warning("账号被冻结，请注意查看手机短信，并在解冻后手动登录一次")
+            logger.warning("账号被冻结，请注意查看手机短信，并在解冻后手动登录一次")
+            logger.warning("账号被冻结，请注意查看手机短信，并在解冻后手动登录一次")
+            return None
+        elif "错误" in content:
+            logger.warning("账号或密码错误，请检查后重试")
+            return None
+        else:
+            return page
+    except TimeoutError:
+        return "TimeoutError"
+
+
+class OperationTimedOutError(Exception):
+    pass

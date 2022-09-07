@@ -22,6 +22,7 @@ from . import score, utils, path, login_check, elective
 from .elective import check_elective
 from .path import *
 from .score import *
+from .utils_net import OperationTimedOutError
 
 driver = get_driver()
 global_config = driver.config
@@ -70,15 +71,15 @@ async def score_checker_(bot: Bot, event: MessageEvent, state: T_State, matcher:
                     await score_checker.finish(f"To  {qq}:\n请先添加机器人为好友捏")
                 # await score_checker.finish(msg_text + MessageSegment.image(f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
             elif result[1] == 1:
-                await score_checker.finish(
-                    f"To  {qq}:\n你的账号或密码错误，请重新绑定\n命令：换绑2019010000 123456\n账号密码用空格隔开")
+                await score_checker.finish(cue +
+                                           f":\n你的账号或密码错误，请重新绑定\n命令：换绑2019010000 123456\n账号密码用空格隔开")
             elif result[1] == 0:
-                await score_checker.finish(cue + f"\n超时了诶~~~网络貌似不给力...")
+                await score_checker.finish(cue + f"\n超时了诶~~~网络貌似不给力，或许是官网出了问题呢...")
             elif not result[0]:
-                await score_checker.finish(cue + f"\n没有查询到{args}的成绩哦，可能是官网出了点问题，请自行查看...")
+                await score_checker.finish(cue + f"\n没有查询到{args}的成绩哦，可能是官网出了点点问题，请自行查看...")
         else:
-            logger.error("登陆成功但查询为空，可手动打开官网查询，不出意外也查不到")
-            await score_checker.finish("登陆成功但查询为空，可手动打开官网查询，不出意外也查不到")
+            logger.error("登陆成功但查询为空，或许是官网出了问题呢，可手动打开官网查询..")
+            await score_checker.finish("登陆成功但查询为空，或许是官网出了问题呢，可手动打开官网查询..")
 
 
 bind_account = on_command("绑定账号", priority=2, block=True)
@@ -97,7 +98,8 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
             with open(ACCOUNT_PATH, "r", encoding="utf-8") as f:
                 accounts = yaml.load(f, Loader=yaml.FullLoader)
             if qq in accounts:
-                await bind_account.finish("你已经绑定过账号了，请不要重复绑定\n更换绑定请发送：\n换绑201901000 123456\n【账号密码用空格隔开】")
+                await bind_account.finish(
+                    "你已经绑定过账号了，请不要重复绑定\n更换绑定请发送：\n换绑201901000 123456\n【账号密码用空格隔开】")
             else:
                 accounts[qq] = {"account": account_num, "password": pass_w}
                 with open(ACCOUNT_PATH, "w", encoding="utf-8") as f:
@@ -145,12 +147,18 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, matcher: Matcher, arg
     if user_info:
         account = user_info[0]
         password = user_info[1]
-        score_list = await check_elective(account, password)
-        if score_list:
-            temp_file = str(Path('/template/ele.html').resolve())
-            await render_and_shoot(temp_file, score_list, OUTPUT_PATH / f"ele_{qq}.html",
-                                   IMG_OUTPUT_PATH / f"ele_{qq}.png")
-            await ele_checker.finish(cue+":你的选修课情况如下\n"+MessageSegment.image(f"file:///{Path(IMG_OUTPUT_PATH / f'ele_{qq}.png').resolve()}"))
+        try:
+            score_list = await check_elective(account, password)
+            if score_list:
+                temp_file = str(Path('/template/ele.html').resolve())
+                await render_and_shoot(temp_file, score_list, OUTPUT_PATH / f"ele_{qq}.html",
+                                       IMG_OUTPUT_PATH / f"ele_{qq}.png")
+                await ele_checker.finish(cue + ":你的选修课情况如下\n" + MessageSegment.image(
+                    f"file:///{Path(IMG_OUTPUT_PATH / f'ele_{qq}.png').resolve()}"))
+            else:
+                await ele_checker.finish("有什么出错了，可能是官网出了点问题，请自行查看...")
+        except OperationTimedOutError:
+            await ele_checker.finish("查询超时，或许是官网出了问题呢，请稍后再试")
 
 
 async def who_am_i(qq: int, cue: MessageSegment, matcher: Matcher) -> Optional[list[Any]]:
@@ -171,6 +179,7 @@ async def who_am_i(qq: int, cue: MessageSegment, matcher: Matcher) -> Optional[l
         await score_checker.finish(
             cue + f"\n你还没有绑定账号哦，私聊我进行绑定：\n命令：绑定账号2019010000 123456\n更换绑定：\n换绑201901000 123456\n【账号密码用空格隔开】")
         return None
+
 
 check_help = on_command("查分帮助", priority=2, block=True)
 
