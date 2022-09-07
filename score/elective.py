@@ -24,7 +24,11 @@ async def check_elective(account: str, password: str) -> Optional[list]:
     :return:
     """
     logger.info("开始查选修课，将在1min内完成...")
-    main_list = await get_main_cookies(account, password)
+    try:
+        main_list = await get_main_cookies(account, password)
+    except OperationTimedOutError:
+        logger.warning("请求超时，可能是网络问题")
+        raise OperationTimedOutError
     if main_list:
         name = main_list[0]
         page = main_list[2]

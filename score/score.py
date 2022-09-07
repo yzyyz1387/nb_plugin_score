@@ -6,7 +6,7 @@ import yaml
 import httpx
 import asyncio
 
-from .utils_net import get_main_cookies
+from .utils_net import get_main_cookies, OperationTimedOutError
 from .path import *
 from .utils import *
 from functools import wraps
@@ -27,8 +27,10 @@ async def run(account: str, password: str, dm=None) -> Optional[List]:
     :return: 当前学期查询结果
     """
     logger.info("开始运行，将在1min内完成...")
-
-    main_list = await get_main_cookies(account, password)
+    try:
+        main_list = await get_main_cookies(account, password)
+    except OperationTimedOutError:
+        raise OperationTimedOutError
     if main_list:
         name = main_list[0]
         page = main_list[2]
@@ -101,10 +103,10 @@ async def data_processor(account: str, password: str, dm: str = None) -> Optiona
             student_data = await run(account, password, dm)
         else:
             student_data = await run(account, password)
-    except TimeoutError:
+    except OperationTimedOutError or TimeoutError:
         return [None, 0]
     if not student_data:
-        logger.warning("登陆失败")
+        logger.warning("查成绩失败，可能的原因：\n    密码错误")
         return [None, 1]
     else:
         name, semester_DM, total_score, score = student_data[0], student_data[1], student_data[2], student_data[3]
