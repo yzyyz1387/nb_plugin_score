@@ -97,9 +97,9 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
             with open(ACCOUNT_PATH, "r", encoding="utf-8") as f:
                 accounts = yaml.load(f, Loader=yaml.FullLoader)
             if qq in accounts:
-                await bind_account.finish("你已经绑定过账号了，请不要重复绑定")
+                await bind_account.finish("你已经绑定过账号了，请不要重复绑定\n更换绑定请发送：\n换绑201901000 123456\n【账号密码用空格隔开】")
             else:
-                accounts[qq] = {"ACCOUNT_PATH": account_num, "password": pass_w}
+                accounts[qq] = {"account": account_num, "password": pass_w}
                 with open(ACCOUNT_PATH, "w", encoding="utf-8") as f:
                     yaml.dump(accounts, f)
                 await bind_account.finish("绑定成功")
@@ -123,7 +123,7 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
             with open(ACCOUNT_PATH, "r", encoding="utf-8") as f:
                 accounts = yaml.load(f, Loader=yaml.FullLoader)
             if qq in accounts:
-                accounts[qq] = {"ACCOUNT_PATH": account_num, "password": pass_w}
+                accounts[qq] = {"account": account_num, "password": pass_w}
                 with open(ACCOUNT_PATH, "w", encoding="utf-8") as f:
                     yaml.dump(accounts, f)
                 await bind_change.finish("换绑成功")
@@ -190,5 +190,10 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
 查指定学期：
     查成绩 2021-2022-1
     【总是私聊返回结果】
+查选修：
+    查选修
+    查通识
+    我的选修
+    
     """
     await check_help.finish(help_list)
