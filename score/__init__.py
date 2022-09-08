@@ -41,16 +41,20 @@ async def score_checker_(bot: Bot, event: MessageEvent, state: T_State, matcher:
     qq = event.user_id
     cue = await cue_user(event, qq)
     user_info = await who_am_i(qq, cue, matcher)
+    args_ = str(args).split(" ")
     if user_info:
         account = user_info[0]
         password = user_info[1]
         await score_checker.send(cue + f"正在拉取数据，这可能需要15s以上，请稍后...")
         if args:
-            if re.findall(r"\b\d{4}-\d{4}-\d\b", str(args)):
-                await score_checker.send(cue + f"正在查询自定义学期{str(args)}的成绩")
-                result = await data_processor(account, password, str(args))
-            else:
+            dm = re.findall(r"\b\d{4}-\d{4}-\d\b", str(args))
+            if dm:
+                await score_checker.send(cue + f"正在查询自定义学期{dm[0]}的成绩")
+                result = await data_processor(account, password, dm[0])
+            elif not dm and len(args_) != 1:
                 await score_checker.send(cue + f"自定义学期格式误，正为你查询本学期数据")
+                result = await data_processor(account, password)
+            else:
                 result = await data_processor(account, password)
         else:
             result = await data_processor(account, password)
@@ -63,12 +67,18 @@ async def score_checker_(bot: Bot, event: MessageEvent, state: T_State, matcher:
                 await render_and_shoot(temp_file, score_list, OUTPUT_PATH / f"index_{qq}.html",
                                        IMG_OUTPUT_PATH / f"index_{qq}.png")
                 msg_text = f"GPA：{total[1]}\n学分成绩：{total[2]}\n班级排名:{total[3]}\n专业排名：{total[0]}\n"
-                await score_checker.send(cue + f"\n获取成功，正在尝试将成绩通过私聊发送给你")
-                try:
-                    await bot.call_api("send_private_msg", user_id=qq, message=msg_text + MessageSegment.image(
+                if args_[-1] == "-群":
+                    await score_checker.send(cue + "\n" + MessageSegment.image(
                         f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
-                except ActionFailed:
-                    await score_checker.finish(f"To  {qq}:\n请先添加机器人为好友捏")
+                else:
+                    await score_checker.send(cue + f"\n获取成功，正在尝试将成绩通过私聊发送给你")
+                    try:
+                        await bot.call_api("send_private_msg", user_id=qq,
+                                           message=msg_text + "\n上方数据来源于查成绩页面，准确性自辨\n" + MessageSegment.image(
+                                               f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
+                    except ActionFailed:
+                        await score_checker.finish(cue + f":\n请先添加机器人为好友捏, 若想要我在群内发送成绩请发送：\n【查成绩 -群】\n【查成绩 "
+                                                         f"2021-2022-1 -群】")
                 # await score_checker.finish(msg_text + MessageSegment.image(f"file:///{Path(IMG_OUTPUT_PATH / f'index_{qq}.png').resolve()}"))
             elif result[1] == 1:
                 await score_checker.finish(cue +
@@ -195,9 +205,11 @@ async def _(bot: Bot, event: MessageEvent, state: T_State, args: Message = Comma
 查分：
     查成绩
     【总是私聊返回结果】
+    【要在群内返回请发送 查成绩 -群】
 查指定学期：
     查成绩 2021-2022-1
     【总是私聊返回结果】
+    【要在群内返回请发送 查成绩 2021-2022-1 -群】
 查选修：
     查选修
     查通识

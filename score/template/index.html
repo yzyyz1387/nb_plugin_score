@@ -25,7 +25,7 @@
         </thead>
         {% for i in data %}
         {% set sc =  i[1]|int %}
-        {% if sc<=60 %}
+        {% if sc < 60 %}
         <tr style="background-color: #ff000030" >
         {% else %}
         <tr>
