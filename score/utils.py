@@ -146,6 +146,7 @@ async def render_and_shoot(temp_path: str, data, html_write: Union[Path, str], i
     page = await context.new_page()
     await page.goto(f"file:///{Path(html_write).resolve()}")
     await page.locator('.mdui-table').screenshot(path=img_output)
+    await browser.close()
 
 
 def signal_handler(signum, frame):
